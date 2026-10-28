@@ -1,5 +1,17 @@
 # @cloudflare/agents
 
+## 0.32.0
+
+### Minor Changes
+
+- [#2752](https://github.com/cloudflare/agents/pull/2752) [`34cbd30`](https://github.com/cloudflare/agents/commit/34cbd305c6d55d2c38f4063c58ddbe97785fb8c8) Thanks [@mattzcarey](https://github.com/mattzcarey)! - Add `experimental_registerOpenTelemetry()` to `agents/observability`, which records spans from OpenTelemetry-instrumented libraries as Workers trace spans. Experimental and subject to change.
+
+### Patch Changes
+
+- [#2763](https://github.com/cloudflare/agents/pull/2763) [`df85805`](https://github.com/cloudflare/agents/commit/df85805ed79b4287f35f59efdbf2e947854bc14a) Thanks [@mattzcarey](https://github.com/mattzcarey)! - Agents SDK spans (agent lifecycle, `wrapAISDK`, Think) now set span status `error` on failure, where the Workers runtime supports `Span.setStatus()`; attributes are unchanged. See [Observability](https://github.com/cloudflare/agents/blob/main/docs/agents/observability.md#ai-sdk-tracing).
+
+- [#2744](https://github.com/cloudflare/agents/pull/2744) [`a2d371e`](https://github.com/cloudflare/agents/commit/a2d371ec333198855f4ac2aa4dadbe2696e73c75) Thanks [@mattzcarey](https://github.com/mattzcarey)! - Update `@modelcontextprotocol/client` and `@modelcontextprotocol/server` to 2.4.0 and `@modelcontextprotocol/sdk` to 1.32.2, and add a `clientMetadataUrl` option to `DurableObjectOAuthClientProvider` for OAuth Client ID Metadata Documents. See [MCP client](https://developers.cloudflare.com/agents/model-context-protocol/apis/client-api/).
+
 ## 0.31.0
 
 This release adds internal hostnames to the browser. Give a Browser Run browser hostnames such as `preview.internal`, and its requests to them go to your agent instead of the internet, so the model can open a dev server, a workspace folder or another Worker in the same browser it uses for the web.
@@ -20,6 +32,7 @@ You only need to make changes if you serve MCP or use `browserTool`.
 If you serve MCP or use `agents/x402` or `agents/experimental/webmcp`:
 
 1. **Add the MCP packages to your `package.json`** at the versions this release expects, since your package manager no longer installs them. Until you do, builds fail with an unresolved import.
+
    - `agents/mcp` (`McpAgent`, `WorkerTransport`, `createLegacyMcpHandler`) and `agents/x402`: `@modelcontextprotocol/sdk@1.32.1` and `@modelcontextprotocol/server@2.3.1`
    - `agents/mcp/server` (`createMcpHandler`): `@modelcontextprotocol/server@2.3.1`
    - `agents/experimental/webmcp`: `@modelcontextprotocol/sdk@1.32.1`
