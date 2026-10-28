@@ -278,7 +278,13 @@ export interface OpenApiMcpServerOptions {
   ) => Promise<unknown>;
   name?: string;
   version?: string;
+  /** Appended to the execute tool description. */
   description?: string;
+  /**
+   * Custom search tool description. Use `{{types}}` as a placeholder for the
+   * spec type definitions. Falls back to the default when omitted.
+   */
+  searchDescription?: string;
 }
 
 const SPEC_TYPES = `
@@ -339,6 +345,35 @@ declare const codemode: {
   spec(): Promise<OpenApiSpec>;
 };
 `;
+
+const SEARCH_DESCRIPTION = `Search the OpenAPI spec. codemode.spec() returns $refs resolved inline.
+
+Types:
+{{types}}
+
+Your code must be an async arrow function that returns the result.
+
+Examples:
+
+// List all paths
+async () => {
+  const spec = await codemode.spec();
+  return Object.keys(spec.paths);
+}
+
+// Find endpoints by tag
+async () => {
+  const spec = await codemode.spec();
+  const results = [];
+  for (const [path, methods] of Object.entries(spec.paths)) {
+    for (const [method, op] of Object.entries(methods)) {
+      if (op.tags?.some(t => t.toLowerCase() === 'your_tag')) {
+        results.push({ method: method.toUpperCase(), path, summary: op.summary });
+      }
+    }
+  }
+  return results;
+}`;
 
 const REQUEST_TYPES = `
 interface RequestOptions {
@@ -422,7 +457,8 @@ export function openApiMcpServer(options: OpenApiMcpServerOptions): McpServer {
     request: requestFn,
     name = "openapi",
     version = "1.0.0",
-    description
+    description,
+    searchDescription
   } = options;
 
   const spec = options.spec;
@@ -436,34 +472,10 @@ export function openApiMcpServer(options: OpenApiMcpServerOptions): McpServer {
   server.registerTool(
     "search",
     {
-      description: `Search the OpenAPI spec. codemode.spec() returns $refs resolved inline.
-
-Types:
-${SEARCH_TYPES}
-
-Your code must be an async arrow function that returns the result.
-
-Examples:
-
-// List all paths
-async () => {
-  const spec = await codemode.spec();
-  return Object.keys(spec.paths);
-}
-
-// Find endpoints by tag
-async () => {
-  const spec = await codemode.spec();
-  const results = [];
-  for (const [path, methods] of Object.entries(spec.paths)) {
-    for (const [method, op] of Object.entries(methods)) {
-      if (op.tags?.some(t => t.toLowerCase() === 'your_tag')) {
-        results.push({ method: method.toUpperCase(), path, summary: op.summary });
-      }
-    }
-  }
-  return results;
-}`,
+      description: (searchDescription ?? SEARCH_DESCRIPTION).replace(
+        "{{types}}",
+        SEARCH_TYPES
+      ),
       inputSchema: {
         code: z
           .string()

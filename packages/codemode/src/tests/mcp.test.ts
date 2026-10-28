@@ -515,6 +515,45 @@ describe("openApiMcpServer", () => {
     await client.close();
   });
 
+  it("should use custom searchDescription with {{types}} placeholder", async () => {
+    const executor = new DynamicWorkerExecutor({ loader: env.LOADER });
+    const server = openApiMcpServer({
+      spec: sampleSpec,
+      executor,
+      request: async () => ({}),
+      searchDescription: "Find users endpoints.\n\n{{types}}"
+    });
+    const client = await connectClient(server);
+
+    const { tools } = await client.listTools();
+    const searchTool = tools.find((t) => t.name === "search");
+    expect(searchTool!.description).toMatch(/^Find users endpoints\./);
+    expect(searchTool!.description).toContain("interface OperationObject");
+    expect(searchTool!.description).not.toContain("{{types}}");
+    expect(searchTool!.description).not.toContain("// List all paths");
+
+    await client.close();
+  });
+
+  it("searchDescription should not change the execute description", async () => {
+    const executor = new DynamicWorkerExecutor({ loader: env.LOADER });
+    const descriptions = async (searchDescription?: string) => {
+      const server = openApiMcpServer({
+        spec: sampleSpec,
+        executor,
+        request: async () => ({}),
+        description: "Extra execute notes.",
+        searchDescription
+      });
+      const client = await connectClient(server);
+      const { tools } = await client.listTools();
+      await client.close();
+      return tools.find((t) => t.name === "execute")!.description;
+    };
+
+    expect(await descriptions("Custom search.")).toBe(await descriptions());
+  });
+
   it("search tool should list spec paths via codemode.spec()", async () => {
     const executor = new DynamicWorkerExecutor({ loader: env.LOADER });
     const server = openApiMcpServer({
