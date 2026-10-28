@@ -293,7 +293,15 @@ type AddMcpServerResult =
 - **`ready`** - Server connected and tools discovered
 - **`authenticating`** - Server requires OAuth; redirect user to `authUrl`. This includes servers that accept the MCP handshake without a token but require one to list tools, prompts or resources.
 
-Calling `addMcpServer()` again for a server that is already registered returns its current state. If the server is still connecting (for example while it is restored after the agent wakes), the call waits for that attempt and returns its result.
+Calling `addMcpServer()` again for a server that is already registered returns its current state and never reconnects it: `ready`, `authenticating` with the link still waiting for the user, or it throws the current error while the server is `failed`. If the server is still connecting (for example while it is restored after the agent wakes), the call waits for that attempt and returns its result. That makes it safe to call from `onStart` or a request handler; pass a stable `id` so the server keeps the same id everywhere. To try a failed server again, call [`reconnectMcpServer(id)`](#reconnecting-on-request).
+
+### Best practices
+
+- Add servers with a stable `id`, from a callable the user triggers or from `onStart`.
+- Render each server from `getMcpServers()` (`onMcpUpdate` in `useAgent`): send the user to `auth_url` while it is `authenticating`, and show `error` with a **Reconnect** button that calls `reconnectMcpServer(id)` while it is `failed`.
+- Catch [`MCPAuthorizationRequiredError`](#re-authorization-during-a-session) from `callTool()`, `readResource()` and `getPrompt()`, and give the user `error.authUrl`.
+- In a plain `Agent`, call [`waitForConnections()`](#waiting-for-connections) before relying on restored tools. `AIChatAgent` and Think already do.
+- Close the OAuth popup with [`configureOAuthCallback()`](#oauth-authentication).
 
 ## OAuth Authentication
 
@@ -574,6 +582,7 @@ function Dashboard() {
   const [tools, setTools] = useState([]);
   const [servers, setServers] = useState({});
 
+  // reconnectServer is a @callable() that calls this.reconnectMcpServer(id)
   const agent = useAgent({
     agent: "MyAgent",
     onMcpUpdate: (mcpState) => {
@@ -587,7 +596,20 @@ function Dashboard() {
       <h2>Connected Servers</h2>
       {Object.entries(servers).map(([id, server]) => (
         <div key={id}>
-          {server.name}: {server.connectionState}
+          {server.name}: {server.state}
+          {server.state === "authenticating" && server.auth_url && (
+            <a href={server.auth_url} target="_blank">
+              Authorize
+            </a>
+          )}
+          {server.state === "failed" && (
+            <>
+              {server.error}
+              <button onClick={() => agent.call("reconnectServer", [id])}>
+                Reconnect
+              </button>
+            </>
+          )}
         </div>
       ))}
 
@@ -671,6 +693,8 @@ This is useful when you need to call `this.mcp.getAITools()` immediately after t
 > **Note:** `AIChatAgent` handles this automatically via the `waitForMcpConnections` property (defaults to `{ timeout: 10_000 }`). You only need `waitForConnections()` directly when using `Agent` with MCP, or when you want finer control inside `onChatMessage`.
 
 ### Error Recovery
+
+On an `Agent`, retry a failed server with [`reconnectMcpServer(id)`](#reconnecting-on-request). On a standalone manager, `connectToServer()` is the explicit retry: it clears a recorded failure and the step-up budget before connecting.
 
 ```typescript
 async retryConnection(serverId: string) {

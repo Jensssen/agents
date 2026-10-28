@@ -79,6 +79,8 @@ export interface UseChats {
   addMcpServer: (name: string, url: string) => Promise<AddMcpServerResult>;
   /** Remove a registered MCP server by id. */
   removeMcpServer: (id: string) => Promise<void>;
+  /** Try a failed MCP server again; may return a new `authUrl`. */
+  reconnectMcpServer: (id: string) => Promise<AddMcpServerResult>;
 }
 
 function isWorkspaceChangeMessage(value: unknown): boolean {
@@ -155,6 +157,12 @@ export function useChats(): UseChats {
     [directory]
   );
 
+  const reconnectMcpServer = useCallback(
+    async (id: string) =>
+      (await directory.call("reconnectServer", [id])) as AddMcpServerResult,
+    [directory]
+  );
+
   return {
     directory,
     chats,
@@ -164,6 +172,7 @@ export function useChats(): UseChats {
     renameChat,
     deleteChat,
     addMcpServer,
-    removeMcpServer
+    removeMcpServer,
+    reconnectMcpServer
   };
 }

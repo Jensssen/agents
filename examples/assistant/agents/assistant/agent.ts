@@ -301,6 +301,19 @@ export class AssistantDirectory extends Think<Env, DirectoryState> {
     });
   }
 
+  /**
+   * Try a failed MCP server again. Adding a server that is already
+   * registered only reports its state, so this is the explicit retry: it
+   * forgets why the server stopped and connects now, returning a new
+   * `authUrl` if the server needs the user.
+   */
+  @callable()
+  async reconnectServer(
+    id: string
+  ): ReturnType<AssistantDirectory["reconnectMcpServer"]> {
+    return await this.reconnectMcpServer(id);
+  }
+
   @callable()
   async removeServer(id: string): Promise<void> {
     await this.removeMcpServer(id);

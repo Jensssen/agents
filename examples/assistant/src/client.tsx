@@ -73,7 +73,8 @@ import {
   SlidersHorizontalIcon,
   FileTextIcon,
   PencilIcon,
-  ChatsIcon
+  ChatsIcon,
+  ArrowClockwiseIcon
 } from "@phosphor-icons/react";
 import {
   fetchCurrentUser,
@@ -416,6 +417,7 @@ function Chat({
   mcpState,
   addMcpServer,
   removeMcpServer,
+  reconnectMcpServer,
   onRequestRename,
   onRequestDelete
 }: {
@@ -444,6 +446,10 @@ function Chat({
   ) => Promise<{ id: string; state: string; authUrl?: string }>;
   /** Remove an MCP server from the shared registry. */
   removeMcpServer: (id: string) => Promise<void>;
+  /** Try a failed MCP server again; may return a new `authUrl`. */
+  reconnectMcpServer: (
+    id: string
+  ) => Promise<{ id: string; state: string; authUrl?: string }>;
   onRequestRename: () => void;
   onRequestDelete: () => void;
 }) {
@@ -652,6 +658,17 @@ function Chat({
       console.error("Failed to add MCP server:", e);
     } finally {
       setIsAddingServer(false);
+    }
+  };
+
+  const handleReconnectServer = async (serverId: string) => {
+    try {
+      const result = await reconnectMcpServer(serverId);
+      if (result.authUrl) {
+        window.open(result.authUrl, "oauth", "width=600,height=800");
+      }
+    } catch (e) {
+      console.error("Failed to reconnect MCP server:", e);
     }
   };
 
@@ -933,6 +950,16 @@ function Chat({
                                     Auth
                                   </Button>
                                 )}
+                              {server.state === "failed" && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon={<ArrowClockwiseIcon size={12} />}
+                                  onClick={() => handleReconnectServer(id)}
+                                >
+                                  Reconnect
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1935,7 +1962,8 @@ function MultiChatApp({
     renameChat,
     deleteChat,
     addMcpServer,
-    removeMcpServer
+    removeMcpServer,
+    reconnectMcpServer
   } = useChats();
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -2032,6 +2060,7 @@ function MultiChatApp({
               mcpState={mcpState}
               addMcpServer={addMcpServer}
               removeMcpServer={removeMcpServer}
+              reconnectMcpServer={reconnectMcpServer}
               onRequestRename={() => handleRename(activeChat)}
               onRequestDelete={() => handleDelete(activeChat)}
             />
